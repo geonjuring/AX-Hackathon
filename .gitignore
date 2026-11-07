@@ -1,0 +1,30 @@
+# Credentials
+.env
+.env.*
+!.env.example
+**/secrets.toml
+*.pem
+*.key
+# Restricted data and generated artifacts
+data/
+cleaned/
+private/
+*.csv
+*.parquet
+*.duckdb*
+*.db
+*.sqlite*
+*.zip
+*.tgz
+*.tar*
+*.log
+*.pid
+reports/
+.report_cache/
+report_settings.json
+duck_tmp/
+__pycache__/
+*.py[cod]
+.venv/
+venv*/
+.pytest_cache/
