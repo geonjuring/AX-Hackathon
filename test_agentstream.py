@@ -8,7 +8,7 @@ import pandas as pd
 from agentstream_client import (Config,Client,Conversation,AgentStreamError,parse_ndjson)
 from agent import build_payload,build_message
 
-BOT='767e55e3-53f4-4bd7-b1eb-533c0943df55'
+BOT='de8ab940-c114-45a8-a9f6-a38a0b33d1d2'
 SID='11111111-1111-4111-8111-111111111111'
 
 
@@ -38,6 +38,15 @@ def answer(text='확인 필요'):
 
 
 class StreamTests(unittest.TestCase):
+    def test_gateway_event_takes_precedence_over_message_class(self):
+        raw=wire({'event':'tool.content','type':'tool','content':'도구 내부 내용'},
+            {'event':'assistant.delta','type':'AIMessageChunk','event_id':'delta-1',
+             'content':[{'type':'reasoning','text':'내부 추론'}, {'type':'text','text':'실제 답변'}]},
+            {'event':'assistant.delta','type':'AIMessageChunk','event_id':'delta-1','content':'중복'},
+            {'event':'turn.completed','sequence':4})
+        result=parse_ndjson(raw[i:i+1] for i in range(len(raw)))
+        self.assertEqual(result.text,'실제 답변')
+
     def test_unicode_split_dedup_and_nontext_exclusion(self):
         raw=wire({'type':'tool.content','content':'도구 내부 정보'},
             {'type':'assistant.delta','event_id':'a','data':{'content':[{'type':'thinking','text':'숨긴 추론'}, {'type':'text','text':'한글 답변'}]}},
@@ -123,6 +132,20 @@ class ContractTests(unittest.TestCase):
 
 
 class PayloadTests(unittest.TestCase):
+    def test_message_preserves_multiple_report_rows_without_single_table_json(self):
+        payload={'분석조건':{'호기':'01','예측정보':{'보류':['관측일 부족']}},
+                 '표':{'센서':[{'값':0,'누락':None,'후보':False,'음수':-1.25}], '비교LOT':[]}}
+        message=build_message(payload,'설명')
+        self.assertNotIn('```json',message)
+        self.assertIn('분석표 센서의 원래 행수는 1',message)
+        for column,value in [('값','0'),('누락','결측(null)'),('후보','false'),('음수','-1.25')]:
+            self.assertIn('센서의 1번째 행에서 '+column+' 값은 '+value+' 입니다.',message)
+        self.assertIn('분석표 비교LOT의 원래 행수는 0 입니다.\n- 데이터 행이 없습니다. 이 표에만 해당합니다.',message)
+        self.assertIn('호기 값은 01 입니다.',message)
+        self.assertIn('예측정보 > 보류 > 1 값은 관측일 부족',message)
+        with self.assertRaises(AgentStreamError):
+            build_message({'표':{'큰표':[{'x':i} for i in range(2001)]}})
+
     def test_overview_keeps_null_and_values_and_no_system_override(self):
         p=build_payload({'overview':pd.DataFrame({'line':['01'],'값':[None]}),'기간':(date(2026,1,1),date(2026,1,2))},'overview')
         self.assertEqual(p['표']['호기별 집계'][0],{'line':'01','값':None})

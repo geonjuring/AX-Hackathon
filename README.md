@@ -4,6 +4,10 @@
 
 숫자는 계산 엔진이 산출하고 AI는 설명을 보조합니다. 관측 이상과 원인은 구분하며, 기준·기록이 부족하면 판정을 보류합니다. 예측은 참고 추세이며 모의 알림은 실제 메시지를 보내지 않습니다.
 
+공용 시연 주소: **https://devopen-gpu.jntp-ax.or.kr/i/4TidQOAXSih_aFpf/**
+
+AgentStream 연결·검증은 [연동 안내](docs/AGENTSTREAM.md), 서버 실행·재시작은 [배포 안내](docs/DEPLOYMENT.md)를 참고하세요.
+
 ## 주요 기능
 
 - 경영 리포트: 일간·주간·월간 생산, LOT, 근무조, 전력 및 청구기준 집계
@@ -73,7 +77,9 @@ python -m streamlit run unified_app.py
 
 AgentStream API 키는 **서버 환경변수** `AGENTSTREAM_API_KEY`로만 설정합니다. 필요에 따라 `AGENTSTREAM_BASE_URL`, `AGENTSTREAM_CHATBOT_ID`, `AGENTSTREAM_WORKSPACE_ID`를 지정합니다. `.env.example`은 빈 예시이며 앱이 `.env`를 자동으로 읽지 않습니다. 실제 키·비밀번호·인증 쿠키를 코드나 README에 넣지 마세요.
 
-키가 없으면 규칙 기반 설명으로 동작합니다. 실제 키·호출 권한 및 첫 질문·후속 질문의 완료 응답은 운영자가 별도 검증해야 합니다. `check_agentstream.py`는 연결 확인용이며, `verify_agentstream.py`와 `check_agentstream.py --smoke`는 실제 모델 호출과 토큰 사용이 발생합니다.
+키가 없으면 규칙 기반 설명으로 동작합니다. 팀 배포에서는 팀 챗봇의 공개·CHAT_INVOKE 설정, 실제 첫 질문·동일 세션 후속 질문 및 공용 웹의 생성 완료를 확인했습니다. 새 환경에서는 운영자가 별도로 검증해야 합니다. `check_agentstream.py`는 연결 확인용이며, `verify_agentstream.py`와 `check_agentstream.py --smoke`는 실제 모델 호출과 토큰 사용이 발생합니다.
+
+NDJSON의 `event`를 메시지 자료형인 `type`보다 우선해 처리합니다. 여러 계산표는 표 이름·행·항목을 보존한 설명 문맥으로 전달하여 단일 JSON 표 입력과 구분합니다. 값 0·음수·문자열 식별자·결측을 구분하며, 입력 한도를 넘으면 잘라 보내지 않고 범위 축소를 안내합니다. 생성 완료는 답변 정확성 검증 완료를 뜻하지 않습니다. 모델의 규격·예측·출처 표현은 계산표와 승인된 현장 기준에 대조해야 합니다.
 
 AIStream은 기본 배포 서비스에 연결하며 적용 가능한 분석 범위에서 집계·운전 기록을 전송합니다. `AISTREAM_BASE_URL`, `AISTREAM_TIMEOUT_SECONDS`로 변경할 수 있습니다. 외부 API 장애 시 분석 보류·오류를 표시하며 미응답을 정상으로 판단하지 않습니다. 데이터 전송이 허용된 환경에서 사용하세요.
 
@@ -86,7 +92,7 @@ python -m unittest discover -s . -p 'test_*.py'
 PYTHONPATH="$PWD/management_snapshot" python -m unittest discover -s management_snapshot/tests -p 'test_*.py'
 ```
 
-업로드 준비 시 분석·API·재생·리포트 테스트 **35개**, 경영 리포트 테스트 **36개**, 총 **71개**가 통과했습니다. 외부 API의 실제 응답과 다른 기기의 배포 접속은 별도 검증 항목입니다. 현재 환경에서 NumPy 시간 단위 관련 DeprecationWarning이 발생하며 테스트 실패는 아닙니다.
+2026-11-08 최신 후보 소스를 팀 서버의 별도 폴더에서 Python 3.12.3으로 검증했습니다. 분석·API·재생·리포트 테스트 **37개**, 경영 리포트 테스트 **36개**, 총 **73개**가 통과했고 Python 소스 **47개**의 구문 분석을 확인했습니다. 운영 DB와 실제 API 키는 이 테스트에 사용하지 않았습니다. 실제 API와 공용 웹 검증 기록은 [연동 안내](docs/AGENTSTREAM.md)를 참고하세요. 신규 기기 설치·다른 기기의 시연 접속은 별도 확인 항목입니다. 기존 NumPy 시간 단위 관련 DeprecationWarning은 남아 있으며 테스트 실패는 아닙니다.
 
 ## 코드 구성
 
@@ -100,6 +106,8 @@ PYTHONPATH="$PWD/management_snapshot" python -m unittest discover -s management_
 | `agentstream_client.py`, `aistream_client.py` | 외부 AI 서비스 연결 |
 | `report_export.py`, `report_sections.py` | 다운로드 및 리포트 구성 |
 | `docs/ANALYSIS_GUIDE.md` | 세부 분석 기준·적용 범위·한계 |
+| `docs/AGENTSTREAM.md` | 팀 챗봇·RAG 구성, API 계약·검증·한계 |
+| `docs/DEPLOYMENT.md` | 공용 주소·실행·재시작·키 재주입 |
 | `docs/SUBMISSION_CHECK.md` | 첨부 대회 체크리스트에 따른 점검 결과 |
 
 경영 리포트의 `configure_schedule`은 원래 팀 서버의 경로와 UTC cron을 전제로 하는 운영용 함수입니다. 일반 실행에 필요하지 않으며 다른 서버에서 예약 실행하려면 운영자가 경로·환경변수·접근 권한을 검토해야 합니다. 저장소 업로드 작업은 cron을 등록하거나 기존 서버를 재시작하지 않습니다.
