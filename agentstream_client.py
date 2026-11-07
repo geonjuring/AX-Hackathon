@@ -13,8 +13,8 @@ from urllib import request, error, parse
 from uuid import UUID, uuid4
 
 DEFAULT_BASE = 'https://api-gateway.jntp-ax.or.kr/agentstream'
-DEFAULT_BOT = '767e55e3-53f4-4bd7-b1eb-533c0943df55'
-DEFAULT_WORKSPACE = '492399f1-cb3b-467f-89bb-b0f1bda3328e'
+DEFAULT_BOT = 'de8ab940-c114-45a8-a9f6-a38a0b33d1d2'
+DEFAULT_WORKSPACE = '4e1ef8d1-2bf7-4469-8fa0-b2431771a36a'
 MAX_BYTES = 1024 * 1024
 LOGGER = logging.getLogger(__name__)
 
@@ -112,7 +112,9 @@ def parse_ndjson(chunks, on_delta=None, cancel=None, deadline=None):
                 raise AgentStreamError('이벤트 ID 형식을 확인할 수 없습니다.',stage='message')
             if event_id in seen: return
             seen.add(event_id)
-        name=event.get('type') or event.get('event')
+        # The gateway uses `event` for the stream event and `type` for the
+        # underlying message class (e.g. AIMessageChunk or tool).
+        name=event.get('event') or event.get('type')
         data=event.get('data',event)
         if not isinstance(data,dict): data={}
         if name in ('turn.failed','tool.failed'):

@@ -80,7 +80,40 @@ def build_payload(res,kind='lot',forecast=None):
 
 def build_message(payload,question=None):
     task=question or '선택된 분석 결과를 설명하고 필요한 문서 근거를 검색하여 리포트를 작성해주세요. 자료 부족·판정 보류·예측 한계를 구분하고 종합 주의사항으로 마무리해주세요.'
-    return task+'\n\n[현재 앱 계산 결과 — 관측·집계·참고예측 자료]\n```json\n'+json.dumps(payload,ensure_ascii=False,allow_nan=False)+'\n```'
+    # These are already calculated, heterogeneous reports, not one raw table
+    # for AgentStream's single-table analysis pipeline. Send a readable text
+    # context with explicit table/row provenance, retaining every scalar value.
+    lines=[task,'','현재 앱 계산 결과 — 관측·집계·참고예측 자료',
+           '아래는 앱이 계산한 여러 보고서의 설명 문맥입니다. 표별로 행을 구분합니다. 한 표가 비어 있어도 다른 표까지 비었다는 뜻이 아닙니다. null은 결측이며 숫자 0과 다릅니다.',
+           '', '분석조건 설명']
+    def value_text(value):
+        if value is None:return '결측(null)'
+        if isinstance(value,bool):return 'true' if value else 'false'
+        if isinstance(value,str):return value.replace('\r',' ').replace('\n',' ')
+        return str(value)
+    def describe(path,value):
+        if isinstance(value,dict):
+            if not value:lines.append('- '+path+'에는 항목이 없습니다.')
+            for key,child in value.items():describe(path+' > '+str(key),child)
+        elif isinstance(value,(list,tuple)):
+            if not value:lines.append('- '+path+'에는 목록이 없습니다.')
+            for index,child in enumerate(value,1):describe(path+' > '+str(index),child)
+        else:
+            lines.append('- 분석조건의 '+path+' 값은 '+value_text(value)+' 입니다.')
+    for name,value in payload.get('분석조건',{}).items():describe(name,value)
+    total_rows=sum(len(records) for records in payload.get('표',{}).values())
+    if total_rows>2000:
+        raise AgentStreamError('전달할 표의 합계가 2,000행을 초과합니다. 분석 범위를 줄여주세요.',stage='input')
+    for name,records in payload.get('표',{}).items():
+        lines.extend(['','분석표 '+name+'의 원래 행수는 '+str(len(records))+' 입니다.'])
+        if not records:lines.append('- 데이터 행이 없습니다. 이 표에만 해당합니다.')
+        for index,record in enumerate(records,1):
+            for column,value in record.items():
+                lines.append('- '+name+'의 '+str(index)+'번째 행에서 '+str(column)+' 값은 '+value_text(value)+' 입니다.')
+    message='\n'.join(lines)
+    if len(message.encode('utf8'))>MAX_BYTES:
+        raise AgentStreamError('질문과 API 표가 UTF-8 1MiB 제한을 초과합니다. 범위를 줄여주세요.',stage='input')
+    return message
 
 
 def payload_id(payload):

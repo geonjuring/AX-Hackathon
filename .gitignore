@@ -22,6 +22,11 @@ private/
 reports/
 .report_cache/
 report_settings.json
+# Operator-only runtime state (no source or fixtures)
+/agentstream-staging.json
+/agentstream-verification.json
+/agentstream-integration-manifest.json
+/public-deployment.json
 duck_tmp/
 __pycache__/
 *.py[cod]
