@@ -24,12 +24,16 @@ def run(lot, n, manual):
     return LA.analyze(lot, n, list(manual) if manual else None)
 
 
+DEFAULT_LOT = "64597658"
+
+
 def lot_page(mode="이력 분석"):
     with st.sidebar:
         dl = defect_list()
         opts = ["직접 입력"] + [f"{r.lot_no} · {r.q_date} · {r.line}호기 · {r.유형}" for r in dl.itertuples()]
-        pick = st.selectbox("2026 공정불량 LOT", opts, index=1 if len(opts) > 1 else 0)
-        lot = st.text_input("LOT 번호", value="" if pick == "직접 입력" else pick.split(" · ")[0])
+        default_index = next((i for i, option in enumerate(opts) if option.startswith(DEFAULT_LOT + " · ")), 0)
+        pick = st.selectbox("2026 공정불량 LOT", opts, index=default_index)
+        lot = st.text_input("LOT 번호", value=DEFAULT_LOT if pick == "직접 입력" else pick.split(" · ")[0])
         n = st.number_input("비교 LOT 수 (자동 선택)", 1, 5, 2)
         manual = st.text_input("비교 LOT 직접 지정 (쉼표로 구분, 비우면 자동)")
         go = st.button("분석", type="primary", width="stretch")

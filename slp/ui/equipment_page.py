@@ -24,7 +24,7 @@ def equip_page(mode="이력 분석"):
     with st.sidebar:
         ls = _lines()
         line = st.selectbox("호기", ["전체"] + ls, index=0, format_func=lambda x: "전체 호기" if x == "전체" else f"{x}호기", key="equipment_line_v2")
-        rng = st.date_input("기간", (date(2026, 8, 1), date(2026, 8, 31)), min_value=date(2026, 1, 1), max_value=date(2026, 11, 4))
+        rng = st.date_input("기간", (date(2026, 10, 1), date(2026, 10, 31)), min_value=date(2026, 1, 1), max_value=date(2026, 11, 4))
         st.caption("기준기간 = 바로 앞의 같은 길이 기간 (자동)")
     if not isinstance(rng, (list, tuple)) or len(rng) != 2:
         st.info("기간의 시작일과 종료일을 모두 고르세요.")
