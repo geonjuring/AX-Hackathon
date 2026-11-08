@@ -1,8 +1,8 @@
 """Standalone entry; shared navigation can import the page renderers."""
 import streamlit as st
 st.set_page_config(page_title="SLP 분석 에이전트", page_icon="🏭", layout="wide")
-from slp_lot_page import lot_page
-from equip_page import equip_page
+from slp.ui.lot_page import lot_page
+from slp.ui.equipment_page import equip_page
 with st.sidebar:
     st.header("🏭 SLP 분석 에이전트")
     menu = st.radio("메뉴", ["LOT 이상 분석", "설비 이상 분석"], label_visibility="collapsed")

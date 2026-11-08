@@ -2,9 +2,9 @@
 
 ## 실행점과 데이터
 
-공용 주소는 https://devopen-gpu.jntp-ax.or.kr/i/4TidQOAXSih_aFpf/ 입니다. 통합 실행점은 `unified_app.py`이며 `run.sh`가 이를 실행합니다. 경영 리포트는 `management_snapshot/`, LOT·설비 메뉴는 `slp_navigation.py`로 연결합니다. `app.py`는 LOT·설비만 제공하는 별도 실행점입니다.
+공용 주소는 https://devopen-gpu.jntp-ax.or.kr/i/4TidQOAXSih_aFpf/ 입니다. 통합 실행점은 `unified_app.py`이며 `run.sh`가 이를 실행합니다. 경영 리포트는 `slp/management/`, LOT·설비 메뉴는 `slp/ui/navigation.py`로 연결합니다. `app.py`는 LOT·설비만 제공하는 별도 실행점입니다.
 
-Python 3.12 가상환경에 `requirements.txt`를 설치하고, 권한 있는 정제 CSV와 분석 DB를 별도로 준비합니다. 경영 리포트에는 DB 외에 CSV도 필요합니다. 저장소 기본값은 `data/`와 `slp.duckdb`이며 다른 위치는 `SLP_DATA`, `SLP_DB`로 지정합니다. `prep.py`는 DB를 재생성하므로 실행 중인 DB에 사용하지 않습니다.
+Python 3.12 가상환경에 `requirements.txt`를 설치하고, 권한 있는 정제 CSV와 분석 DB를 별도로 준비합니다. 경영 리포트에는 DB 외에 CSV도 필요합니다. 저장소 기본값은 `data/`와 `slp.duckdb`이며 다른 위치는 `SLP_DATA`, `SLP_DB`로 지정합니다. `scripts/prepare/prep.py`는 DB를 재생성하므로 실행 중인 DB에 사용하지 않습니다.
 
 ```bash
 export SLP_DATA="/absolute/path/to/authorized/deidentified/data"
@@ -27,9 +27,9 @@ export AGENTSTREAM_TIMEOUT_SECONDS=120
 # 다른 워크스페이스/챗봇을 사용할 때만 해당 ID를 지정합니다.
 # export AGENTSTREAM_CHATBOT_ID="..."
 # export AGENTSTREAM_WORKSPACE_ID="..."
-python check_agentstream.py
+python -m scripts.checks.check_agentstream
 # 실제 호출과 토큰 사용이 발생하는 검증입니다.
-python verify_agentstream.py
+python -m scripts.checks.verify_agentstream
 bash run.sh
 ```
 
@@ -57,3 +57,7 @@ bash run.sh
 5. 공용 주소에서 경영·LOT·설비 메뉴, 실제 AI 응답, 실패 시 계산표 유지, HTML/ZIP의 응답 보존을 확인합니다. 문제가 생기면 기존 버전으로 복구합니다.
 
 상태 확인 경로는 `/<BASE_PATH>/_stcore/health`입니다. 이것은 Streamlit 프로세스 상태이며 AgentStream 모델·도구 상태나 답변 품질을 보장하지 않습니다. 시연과 심사가 끝날 때까지 프로세스·프록시·사용량 한도를 운영자가 확인해야 합니다.
+
+## 폴더 정리 후 운영 경로
+
+`bash run.sh`, `unified_app.py`, 포트와 메뉴 URL은 유지합니다. 캐시·생성 리포트·설정은 `SLP_RUNTIME` 또는 저장소의 `runtime/`를 사용합니다. API 키는 이전과 같이 프로세스 환경변수로만 주입하며 `.env`를 자동 로드하지 않습니다. 이전 경영 설정을 유지하려면 `report_settings.json`만 새 런타임 위치로 복사합니다. 기존 서버를 새 코드로 바꾸기 전에는 별도 포트에서 검증하고, 이전 실행 폴더와 키 주입 수단을 유지하세요.
