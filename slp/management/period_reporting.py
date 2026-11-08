@@ -158,7 +158,7 @@ def build_period_report(r, e, runtime, headcount, reference, lines, crew='전체
 def render_period_html(m, byline, groups, ledger, weekly):
     from slp.management.production_report import render_html
     content = render_html(m, byline, groups)
-    extra = '<section><h2>집계 원칙</h2><p>주별 집계는 매월 1~7·8~14·15~21·22~28·29~말일입니다. 생산량·전력량은 일간 원장의 합계입니다. 기간 LOT 수와 통합 묶음 수는 일별 건수의 합이며, 평균 SIZE는 총생산량을 이 건수로 나눕니다. 인당 생산량은 생산이 있는 날의 누적 인원으로, 가동률은 DB 일간 가동 분과 기준 분을 각각 합산한 뒤 나누어 계산합니다. 미래 또는 아직 확보하지 못한 날짜를 확정된 0으로 채우지 않습니다. 전력은 선택한 실측 또는 청구 기준 추정 배분 원장을 합산하며, 청구 기준은 월 청구량에 맞춘 추정값입니다.</p></section>'
+    extra = ''
     extra += '<section><h2>로컬 DB 일간 원장 · 해당 월</h2>'+ledger.to_html(index=False,escape=True,border=0)+'</section>'
     extra += '<section><h2>로컬 DB 주차별 합계 · 월내 고정 주차</h2>'+weekly.to_html(index=False,escape=True,border=0)+'</section>'
     return content.replace('</html>',extra+'</html>')

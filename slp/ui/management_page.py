@@ -344,9 +344,6 @@ with details:
         st.info('전체 공장의 생산량 합계가 0인 휴무일입니다.')
     else:
         st.warning('원본 실적이 없어 일일 생산 요약을 확정할 수 없습니다.')
-    st.caption(f"DB 가동률: 가동 분 {number(m['operating_minutes'], '분')} / 기준 {m['expected_minutes']:,}분. 기록 누락 {m['missing_runtime_minutes']:,}분은 가동 분에 더하지 않습니다.")
-    st.caption('가동 분은 RPM 250 초과 원본 기록을 시간당 최대 60분으로 집계합니다. 주별·월별 집계는 일별 분자와 분모를 합산합니다.')
-    st.caption(f"인원 {m['people']}명·교대 · {m['people_source']} · {m['people_note']}")
     if not m['people']: st.info('인당 생산량: 자동 계산에 필요한 생산일보 인원 기록을 확인하세요.')
     with st.expander('인당 생산량 · 인원 조 코드 연결 근거'):
         mapping = pd.DataFrame(m.get('people_mapping_records',[]))
@@ -367,25 +364,11 @@ with details:
     st.caption('HTML 파일을 브라우저에서 열고 인쇄를 누르면 PDF로 저장할 수 있습니다. 개인 급여·이름은 포함하지 않습니다.')
 with lot_tab:
     st.subheader('통합 그룹과 단독 LOT')
-    st.write('p_grplot_list 연결표의 그룹 번호로 LOT를 합칩니다. 연결표에 없는 LOT는 정상적인 단독 LOT로 계산합니다. 스케줄 순번이나 GRADE·COLOR로 그룹을 추정하지 않습니다.')
+    st.write('등록된 생산 묶음 정보에 따라 LOT를 함께 집계합니다. 묶음 정보가 없는 LOT는 각각 별도로 계산합니다.')
     st.info(f"통합 그룹 {m['integrated_groups']}개 + 단독 LOT {m['standalone_lots']}개 = 총 {len(groups)}개 묶음")
     st.caption('표의 수량은 선택 날짜·라인의 실제 생산량입니다. 여러 날짜에 걸친 그룹의 전체 생산량은 아닙니다. 그룹에 서로 다른 라인·GRADE·COLOR가 있으면 모두 표시하며, 연결표의 그룹은 유지합니다.')
     st.dataframe(groups, hide_index=True, use_container_width=True)
     st.download_button('LOT 묶음 CSV 다운로드', groups.to_csv(index=False).encode('utf-8-sig'), f'lots_{m["day"]}_{crew_view}.csv', 'text/csv')
 with basis:
-    st.markdown('''
-| 지표 | 계산 기준 |
-|---|---|
-| 일일/A조/B조 생산량 | 생산실적 `pr_qty` 합계 / `jo`별 합계 (kg) |
-| 평균 LOT SIZE | 당일 생산량 ÷ 라인·LOT 기준 중복 제거 LOT 수 |
-| 통합 LOT SIZE | 당일 생산량 ÷ (통합 그룹 수 + 단독 LOT 수). `p_grplot_list` 기준, 미등록 LOT는 단독 처리 |
-| 가동률 | 업로드 DB `HMI_feeder_list`의 `p_date`·`line`·시간대별 RPM(`mval02`) 250 초과 기록 수, 시간당 최대 60분. 날짜별 RPM 가동 분이 양수인 호기만 포함. 가동 분 ÷ (가동 호기·일 수 × 1,440분) × 100. 포함한 호기의 당일 정지·누락 시간은 분모에 유지. 주별·월별 집계는 일별 분자·분모 합산. MES 서버에 접속하지 않음 |
-| 생산 라인 비율 | 당일 생산량이 양수인 라인 수 ÷ 선택 라인 수. 센서 기반 가동률과 다름 |
-| 금월 가동일 | 해당 월 1일부터 기준일까지 선택 라인 합계 생산량이 양수인 날짜 수 |
-| 금월 일평균 | 금월 누적 생산량 ÷ 금월 가동일 |
-| 인당 생산량 | 선택 조 생산량 ÷ 일보의 (tot_cnt-abs_cnt) 합계(명·교대). 2공장 D→A·E→B 통일, 같은 날짜·공장·주야간 생산실적 조로 보정. 공장 전체 라인 선택 시 자동 적용. 개별 호기는 배분 기준이 없어 미산출 |
-| 전체 사용 전력량 | 한전 청구 자료가 있는 월: 달력일 센서 합계에 월 청구량/월 센서 합계 계수 적용, 0.1 kWh 잔여량 배분. 청구 자료가 없는 월: DB 센서 사용량 합계(생산일 08:30~다음 날 08:30). 공장·라인 필터와 무관, 태양광(217) 제외 |
-| 압출기 전력량 | 선택 호기 센서 합계. 청구 자료가 있는 월은 월 계수로 보정한 추정값, 없는 월은 DB 센서 사용량 합계 |
-''')
-    st.caption('주별 집계는 월내 1~7·8~14·15~21·22~28·29~말일입니다. 생산·전력은 일간 원장의 합이며, LOT 평균·인당 생산량은 합산한 분자와 분모로 재계산합니다. 가동률은 DB 일간 가동 분 합계 ÷ 일간 기준 분 합계로 계산합니다. 일별 비율을 단순 평균하지 않습니다. 기간 LOT/통합 묶음 수는 일별 건수의 합입니다.')
-    st.caption('가동 분은 MES 재현식과 같이 원본 행을 세고 시간당 60분으로 제한합니다. 기록 확보율은 별도로 중복 분을 제거해 산출합니다. RPM 250의 경계 처리는 당시 MES 검증 자료에 없어 초과 조건으로 재현합니다.')
+    from slp.reporting.calculation_basis import render_markdown
+    st.markdown(render_markdown())

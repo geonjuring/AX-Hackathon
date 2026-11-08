@@ -443,6 +443,7 @@ def render_html(m, byline, groups):
     summary = f"{label_range} 선택 라인·{m['crew_label']} 생산량은 {m['total']:,.0f} kg입니다. 같은 라인의 기간 비교값은 A조 {m['a']:,.0f} kg, B조 {m['b']:,.0f} kg입니다. 선택 조의 금월 누계는 {m['month_total']:,.0f} kg이며, 가동일 기준 일평균은 {number(m['daily_average'], ' kg')}입니다."
     if m.get('runtime_holiday'): summary = '전체 공장·전체 조의 생산량 합계가 0인 휴무일입니다. 가동률은 산정에서 제외합니다.'
     elif not m['source_present']: summary = '해당 날짜의 원본 실적이 없어 생산 현황을 확정할 수 없습니다.'
+    from slp.reporting.calculation_basis import render_html as render_calculation_basis
     shift_table = pd.DataFrame(m.get('crew_shift_schedule',[]))
     return f'''<!doctype html><html lang="ko"><meta charset="utf-8"><meta name="viewport" content="width=device-width,initial-scale=1">
 <title>{escape(label_range)} 생산 {kind_label} 리포트</title><style>
@@ -451,12 +452,12 @@ body{{font-family:Arial,'Malgun Gothic',sans-serif;background:#f2f5f9;color:#172
 <p>라인 {escape(', '.join(m['lines']))} · 근무조 {m['crew_label']} · 생산 집계 {m['period_start']} ~ {m['period_end']} KST · 생성 {datetime.now(KST):%Y-%m-%d %H:%M} KST</p><p>생산·LOT·금월 지표는 선택 조 기준입니다. A/B조 비교 카드와 전력량·가동률은 조회 기간 전체 기준이며 조별로 배분하지 않습니다.</p><button onclick="window.print()">인쇄 / PDF 저장</button>
 <section><h2>오늘의 생산 요약</h2><p>{escape(summary)}</p></section><div class="grid">{cards}</div>
 <section><h2>데이터 확인 사항</h2>{''.join('<p class="warning">'+escape(w)+'</p>' for w in warnings) or '<p>선택한 기준으로 산출했습니다.</p>'}
-<p>전력 센서: {escape(', '.join(m['sensors'])) or '미선택'} · 인원: {m['people']}명·교대 ({escape(m['people_source'])}) · {escape(m['people_note'])} · DB 가동 분 판정: RPM 250 초과 기록 수, 시간당 최대 60분 · 가동 호기·일: {m.get('runtime_active_line_days', 0)}건 · 제외 호기·일: {m.get('runtime_excluded_line_days', 0)}건 · 가동률 산정일: {m.get('runtime_working_days', 1)}일 · 기준 분: {m.get('runtime_expected_minutes', 0):,}분 · 가동 분 합계: {number(m['operating_minutes'], '분')} · 비가동 {m['downtime_minutes']:,}분 · 소정지 {m['minor_stop_minutes']:,}분</p></section>
+<p>전력 센서: {escape(', '.join(m['sensors'])) or '미선택'}</p></section>
 <section><h2>날짜별 A/B조 주야 근무</h2>{shift_table.to_html(index=False,escape=True,border=0)}<p>선택 공장 전체 생산실적의 juya 기준: 1=주간, 2=야간. 실적이 없는 조의 근무예정은 추정하지 않습니다.</p></section>
 <section><h2>라인별 생산</h2>{byline.to_html(index=False,escape=True,border=0)}</section>
 <section><h2>통합 그룹과 단독 LOT</h2>{groups.to_html(index=False,escape=True,border=0)}<p>p_grplot_list의 grp_lot_no로 묶으며, 연결표에 없는 LOT는 각각 단독 묶음으로 계산합니다. 그룹 {m['integrated_groups']}개 + 단독 LOT {m['standalone_lots']}개. 수량은 선택 날짜·라인의 실제 생산량이며, 여러 날짜에 걸친 그룹의 전체 생산량은 아닙니다. GRADE·COLOR·라인이 여러 개이면 모두 표시하고 그룹은 유지합니다.</p></section>
 <section><h2>전력 집계 기준</h2><p>{escape(energy_note)}</p></section>
-<section><h2>계산 기준</h2><p>평균 LOT SIZE = 일일 생산량 ÷ 라인·LOT 기준 중복 제거 LOT 수. 통합 LOT SIZE = 일일 생산량 ÷ (통합 그룹 수 + 단독 LOT 수). 금월 가동일 = 선택 라인에 생산 실적이 양수인 날짜 수. 금월 일평균 = 금월 총생산량 ÷ 가동일. 인당 생산량 = 일일 생산량 ÷ 생산일보 공장·교대별 (총원-결원) 합계 또는 직접 입력 인원. 단위는 명·교대이며 개인별 중복 제거 인원이 아닙니다. 업로드 DB RPM 계산 기준: HMI_feeder_list에서 p_date·line·times의 시간대별로 RPM(mval02) 250 초과인 원본 기록을 세고 시간당 최대 60분으로 제한합니다. 가동률은 가동 분 합계 ÷ (날짜별 가동 이력이 있는 호기 수의 합 × 1,440분) × 100입니다. 선택 호기 중 RPM 250 초과 가동 분이 있는 날짜·호기만 포함하며, 포함한 호기의 당일 정지 시간은 분모에 남습니다. 연속 5분 조건은 적용하지 않습니다. 기록 없는 구간은 별도로 표시하되 가동 분에는 더하지 않습니다. 주별·월별 집계는 DB의 일별 가동 분 합계 ÷ 일간 기준 분 합계 × 100으로 계산합니다. MES 서버에 접속하지 않습니다. 전력은 선택한 집계 기준을 따릅니다. 센서 실측은 생산일 08:30 기준, 청구 기준 추정 배분은 달력일 00시 기준입니다. 청구 기준은 2026년 1~10월만 월 청구량 ÷ 달력월 센서 합계를 계수로 적용하고 0.1 kWh 잔여량을 배분합니다. 전체 전력은 공용 설비를 포함하며 라인 필터와 무관합니다. 태양광 센서(217)는 제외합니다. 압출기·히터는 선택 호기의 센서에 대응하며 청구 기준에서는 동일 계수로 보정한 추정값입니다. 8호기는 히터(512)와 휴게실(510)을 포함합니다.</p></section></html>'''
+<section><h2>계산 기준</h2>{render_calculation_basis()}</section></html>'''
 
 
 def save_report(m, byline, groups):
